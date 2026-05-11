@@ -1,0 +1,1613 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>CIPQ Analytical System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --ink: #1a1a2e;
+    --paper: #f5f0e8;
+    --cream: #ede8dc;
+    --rust: #c94a2e;
+    --gold: #c8993a;
+    --teal: #2a6b6e;
+    --muted: #7a7065;
+    --border: #c8bfae;
+    --creation: #8b4f9e;
+    --production: #c94a2e;
+    --distribution: #2a6b6e;
+    --access: #3a7a3a;
+    --governance: #c8993a;
+    --shadow: 0 10px 30px rgba(26, 26, 46, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  img, table, iframe, canvas, svg {
+    max-width: 100%;
+  }
+
+  header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 2rem 2.5rem 1.5rem;
+    border-bottom: 4px solid var(--gold);
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: 'CIPQ';
+    position: absolute;
+    right: -0.5rem;
+    top: -1rem;
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(4rem, 16vw, 9rem);
+    font-weight: 900;
+    color: rgba(255,255,255,0.04);
+    pointer-events: none;
+    line-height: 1;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.4rem, 4vw, 1.9rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    max-width: 780px;
+    position: relative;
+    z-index: 1;
+  }
+  header p {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: clamp(0.68rem, 2vw, 0.72rem);
+    color: var(--gold);
+    margin-top: 0.4rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+    padding-right: 2rem;
+  }
+
+  nav {
+    background: var(--cream);
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 clamp(0.75rem, 2vw, 2rem);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+  }
+  nav button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.9rem 1.2rem;
+    cursor: pointer;
+    color: var(--muted);
+    white-space: nowrap;
+    transition: all 0.2s;
+    scroll-snap-align: start;
+    min-height: 48px;
+  }
+  nav button:hover { color: var(--ink); }
+  nav button.active {
+    color: var(--rust);
+    border-bottom-color: var(--rust);
+    font-weight: 500;
+  }
+
+  main {
+    padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2.5rem) 3rem;
+    max-width: 1300px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: clamp(1.5rem, 5vw, 3rem) clamp(1rem, 4vw, 2rem);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--cream);
+    margin-bottom: 2rem;
+  }
+  .upload-area:hover, .upload-area.drag-over {
+    border-color: var(--teal);
+    background: #e8f0f0;
+  }
+  .upload-area .icon {
+    font-size: clamp(2rem, 7vw, 2.5rem);
+    margin-bottom: 0.8rem;
+    display: block;
+  }
+  .upload-area h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.05rem, 4vw, 1.2rem);
+    margin-bottom: 0.5rem;
+  }
+  .upload-area p {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    overflow-wrap: anywhere;
+  }
+  #fileInput { display: none; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.75rem 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.2s;
+    min-height: 46px;
+    text-align: center;
+  }
+  .btn-primary { background: var(--ink); color: var(--paper); }
+  .btn-primary:hover { background: var(--rust); }
+  .btn-secondary { background: var(--cream); color: var(--ink); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--ink); }
+
+  #statusBar {
+    display: none;
+    background: var(--teal);
+    color: white;
+    padding: 1rem 1.2rem;
+    border-radius: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    margin-bottom: 2rem;
+    word-break: break-word;
+  }
+  #statusBar.error { background: var(--rust); }
+
+  .auth-shell {
+    background: linear-gradient(135deg, rgba(201, 153, 58, 0.12), rgba(42, 107, 110, 0.08));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .auth-summary,
+  .auth-form-card {
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(200, 191, 174, 0.9);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+  }
+  .auth-kicker {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.45rem;
+  }
+  .auth-summary h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.15rem, 3vw, 1.45rem);
+    line-height: 1.2;
+    margin-bottom: 0.45rem;
+  }
+  .auth-summary p {
+    color: var(--muted);
+    font-size: 0.92rem;
+    max-width: 60ch;
+  }
+  .auth-meta {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 0.95rem;
+  }
+  .auth-state-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: var(--cream);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .auth-state-pill.connected {
+    background: #e8f3e8;
+    color: var(--access);
+    border-color: rgba(58,122,58,0.18);
+  }
+  .auth-state-pill.syncing {
+    background: #e6f0f0;
+    color: var(--distribution);
+    border-color: rgba(42,107,110,0.18);
+  }
+  .auth-user-email {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.76rem;
+    color: var(--ink);
+    word-break: break-word;
+  }
+  .auth-note,
+  .auth-footnote {
+    margin-top: 0.8rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .auth-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+  }
+  .auth-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.9rem;
+  }
+  .auth-actions .btn {
+    flex: 1 1 150px;
+  }
+  .auth-form-card input[disabled],
+  .auth-form-card button[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.2rem, 4vw, 1.5rem);
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+  }
+  .section-title span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .index-hero {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 14px;
+    padding: clamp(1.75rem, 4vw, 2.5rem);
+    margin-bottom: 2.5rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2rem;
+    align-items: center;
+    box-shadow: var(--shadow);
+  }
+  .index-hero .big-number {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(3rem, 9vw, 5rem);
+    font-weight: 900;
+    line-height: 1;
+    color: var(--gold);
+  }
+  .index-hero .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+  .index-hero .desc {
+    font-size: 0.9rem;
+    max-width: 300px;
+    color: #c8bfae;
+    line-height: 1.5;
+  }
+
+  .domain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .domain-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.2rem 1.2rem 1.1rem;
+    border-top: 4px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .domain-card.creation { border-top-color: var(--creation); }
+  .domain-card.production { border-top-color: var(--production); }
+  .domain-card.distribution { border-top-color: var(--distribution); }
+  .domain-card.access { border-top-color: var(--access); }
+  .domain-card.governance { border-top-color: var(--governance); }
+  .domain-card .d-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+  .domain-card .d-score {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1;
+    word-break: break-word;
+  }
+  .domain-card.creation .d-score { color: var(--creation); }
+  .domain-card.production .d-score { color: var(--production); }
+  .domain-card.distribution .d-score { color: var(--distribution); }
+  .domain-card.access .d-score { color: var(--access); }
+  .domain-card.governance .d-score { color: var(--governance); }
+  .domain-card .d-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 0.4rem;
+  }
+  .domain-bar {
+    margin-top: 0.8rem;
+    height: 6px;
+    background: var(--cream);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .domain-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 1s ease;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    margin-bottom: 2rem;
+    border-radius: 12px;
+    background: white;
+    box-shadow: var(--shadow);
+    -webkit-overflow-scrolling: touch;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  thead tr { background: var(--ink); color: var(--paper); }
+  thead th {
+    padding: 1rem 1.1rem;
+    text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:hover { background: var(--cream); }
+  tbody td {
+    padding: 1rem 1.1rem;
+    vertical-align: top;
+  }
+
+  /* Dataset table helpers */
+  .ds-segid {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    display: block;
+    word-break: break-all;
+  }
+  .ds-meta-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+    word-break: break-word;
+  }
+  .ds-indicator {
+    font-size: 0.82rem;
+    color: var(--rust);
+    display: block;
+    line-height: 1.4;
+  }
+  .ds-cell-text {
+    font-size: 0.82rem;
+    display: block;
+  }
+  .ds-delete-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.7rem;
+    min-height: 36px;
+    white-space: nowrap;
+  }
+  .dataset-table { min-width: 900px; }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    max-width: 100%;
+  }
+  .tag.creation { background: #f3e8f7; color: var(--creation); }
+  .tag.production { background: #fdeee9; color: var(--production); }
+  .tag.distribution { background: #e6f0f0; color: var(--distribution); }
+  .tag.access { background: #e8f3e8; color: var(--access); }
+  .tag.governance { background: #fdf4e3; color: var(--governance); }
+
+  .priority-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 500;
+    background: var(--rust);
+    color: white;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .severity-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .sev-mini {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .sev-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--border);
+    flex: 0 0 auto;
+  }
+  .sev-dot.filled { background: var(--rust); }
+  .sev-text {
+    margin-left: 0.45rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.35rem;
+    margin-bottom: 2rem;
+  }
+  .form-group label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 0.35rem;
+  }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.95rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    min-height: 50px;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(42, 107, 110, 0.12);
+  }
+  .form-group textarea {
+    resize: vertical;
+    min-height: 110px;
+  }
+  .form-group select[multiple] {
+    min-height: 140px;
+    padding: 0.55rem 0.75rem;
+  }
+  .multi-select-dropdown {
+    position: relative;
+  }
+  .multi-select-dropdown summary {
+    width: 100%;
+    min-height: 50px;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    color: var(--ink);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .multi-select-dropdown summary::-webkit-details-marker { display: none; }
+  .multi-select-dropdown summary::after {
+    content: '▾';
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .multi-select-dropdown[open] summary {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(42, 107, 110, 0.12);
+  }
+  .multi-select-options {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.35rem);
+    left: 0;
+    right: 0;
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    box-shadow: var(--shadow);
+  }
+  .multi-select-options label {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0;
+    padding: 0.45rem 0.55rem;
+    border-radius: 8px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .multi-select-options label:hover { background: var(--cream); }
+  .multi-select-options input {
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    accent-color: var(--teal);
+  }
+  .form-group.full { grid-column: 1 / -1; }
+
+  .sev-picker {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .sev-picker button {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--muted);
+    flex: 0 0 auto;
+  }
+  .sev-picker button:hover { border-color: var(--ink); color: var(--ink); }
+  .sev-picker button.selected { background: var(--rust); border-color: var(--rust); color: white; font-weight: 600; }
+  .severity-scale-note {
+    margin-top: 0.45rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .entry-table-wrap { margin-top: 2rem; }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
+  .empty-state p { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
+
+  .actions-row {
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+    align-items: center;
+  }
+  .actions-row .count-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-left: auto;
+    min-width: fit-content;
+  }
+
+  .comp-table th:first-child, .comp-table td:first-child {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    min-width: 180px;
+  }
+  .comp-cell {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    text-align: center;
+  }
+  .comp-cell.high { color: var(--rust); font-weight: 600; }
+  .comp-cell.mid { color: var(--gold); }
+  .comp-cell.low { color: var(--teal); }
+
+  .no-data-msg {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+
+  .filter-row {
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    align-items: center;
+  }
+  .filter-row select, .filter-row input {
+    padding: 0.75rem 0.85rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    color: var(--ink);
+    outline: none;
+    min-height: 46px;
+  }
+  .filter-row label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .upload-meta {
+    margin-top: 0.9rem;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .upload-pill {
+    display: none;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    background: #e8f3e8;
+    color: var(--access);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    border: 1px solid rgba(58,122,58,0.18);
+  }
+  .upload-pill.show { display: inline-flex; }
+  .upload-filename {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    word-break: break-word;
+  }
+  .upload-area.uploaded {
+    border-color: var(--access);
+    background: #eef7ee;
+  }
+
+  .pipeline-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.25rem 0 2.5rem;
+  }
+  .pipeline-step {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.35rem;
+    box-shadow: var(--shadow);
+  }
+  .pipeline-step .step-no {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.35rem;
+  }
+  .pipeline-step strong {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.95rem;
+  }
+  .pipeline-step p {
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+
+  .method-note,
+  .trace-panel {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    margin: 1.5rem 0 2rem;
+  }
+  .method-note p,
+  .trace-panel p {
+    font-size: 0.88rem;
+    color: var(--muted);
+    margin-top: 0.45rem;
+  }
+  .method-note strong,
+  .trace-panel strong {
+    color: var(--ink);
+  }
+  .trace-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.85rem;
+  }
+  .trace-list {
+    display: grid;
+    gap: 1rem;
+  }
+  .trace-item {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    background: var(--paper);
+  }
+  .trace-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+  .trace-quote {
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+  .trace-empty {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--muted);
+    font-size: 0.78rem;
+  }
+  .inline-link-btn {
+    background: none;
+    border: none;
+    color: var(--rust);
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-align: left;
+  }
+  .inline-link-btn:hover { text-decoration: underline; }
+  .snippet-toggle {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    width: 100%;
+    line-height: 1.55;
+  }
+  .snippet-toggle:hover { color: var(--rust); }
+  .snippet-toggle.expanded {
+    white-space: normal;
+  }
+  .snippet-hint {
+    display: block;
+    margin-top: 0.35rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .view-switch {
+    display: flex;
+    gap: 0.85rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.95rem clamp(0.9rem, 3vw, 2.5rem);
+    background: linear-gradient(135deg, rgba(42, 107, 110, 0.1), rgba(201, 153, 58, 0.08));
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .view-toggle-group {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+  .view-toggle-group .btn.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .view-switch-note {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    max-width: 70ch;
+  }
+  .form-note {
+    margin: -0.45rem 0 1rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .readonly-input {
+    background: #f0ece3;
+    color: var(--ink);
+  }
+  .dashboard-actions {
+    display: flex;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.75rem;
+  }
+  .summary-shell,
+  .explanation-card,
+  .insight-card,
+  .validation-banner {
+    background: white;
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+  .summary-shell {
+    border: 1px solid rgba(200, 191, 174, 0.95);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .summary-shell h3,
+  .insight-card h3,
+  .explanation-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    margin-bottom: 0.65rem;
+  }
+  .summary-list,
+  .evidence-list,
+  .reading-list {
+    display: grid;
+    gap: 0.85rem;
+    margin-top: 1.1rem;
+  }
+  .summary-item,
+  .reading-item {
+    padding: 1.1rem 1.2rem;
+    border-radius: 12px;
+    background: var(--cream);
+    border: 1px solid rgba(200, 191, 174, 0.95);
+  }
+  .summary-item p,
+  .reading-item p,
+  .insight-card p,
+  .explanation-card p {
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+  .explanation-grid,
+  .insight-grid,
+  .signal-grid,
+  .stakeholder-grid {
+    display: grid;
+    gap: 1.4rem;
+    margin-bottom: 2.2rem;
+  }
+  .explanation-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+  .insight-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .signal-grid,
+  .stakeholder-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+  .explanation-card,
+  .insight-card {
+    padding: 1.5rem;
+    border: 1px solid rgba(200, 191, 174, 0.95);
+  }
+  .stat-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin: 1.2rem 0;
+  }
+  .stat-block {
+    padding: 1rem 1.1rem;
+    border-radius: 10px;
+    background: var(--cream);
+  }
+  .stat-block .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .stat-block .value {
+    display: block;
+    margin-top: 0.4rem;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.75rem;
+    color: var(--ink);
+  }
+  .evidence-list blockquote {
+    margin: 0;
+    padding: 1.1rem 1.2rem;
+    border-left: 3px solid var(--gold);
+    background: #fbf8f1;
+    color: var(--ink);
+    font-size: 0.92rem;
+    line-height: 1.65;
+  }
+  .confidence-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border: 1px solid var(--border);
+    background: var(--cream);
+    color: var(--muted);
+  }
+  .confidence-pill.high {
+    color: var(--access);
+    background: #e8f3e8;
+  }
+  .confidence-pill.moderate {
+    color: var(--distribution);
+    background: #e6f0f0;
+  }
+  .confidence-pill.emergent {
+    color: var(--production);
+    background: #fdeee9;
+  }
+  .signal-card .signal-head,
+  .insight-card .card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .signal-card .meta-row,
+  .insight-card .meta-row {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .signal-card .narrative {
+    margin-top: 0.85rem;
+  }
+  .validation-banner {
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(201, 74, 46, 0.22);
+    background: #fff8f6;
+  }
+  .validation-banner ul {
+    margin: 0.75rem 0 0 1rem;
+    color: var(--muted);
+  }
+  .muted-inline {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.76rem;
+    color: var(--muted);
+  }
+
+  @media (max-width: 1024px) {
+    .index-hero {
+      grid-template-columns: 1fr 1fr;
+    }
+    .index-hero > div:last-child {
+      grid-column: 1 / -1;
+      margin-left: 0;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .auth-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .auth-form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .pipeline-strip {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .view-switch {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    header {
+      padding: 1.25rem 1rem 1.15rem;
+    }
+
+    nav {
+      padding: 0 0.5rem;
+    }
+
+    nav button {
+      padding: 0.85rem 0.85rem;
+      font-size: 0.66rem;
+    }
+
+    main {
+      padding: 1rem 0.85rem 1.5rem;
+    }
+
+    .index-hero {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .pipeline-strip {
+      grid-template-columns: 1fr;
+    }
+
+    .domain-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .actions-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .actions-row .btn {
+      width: 100%;
+    }
+
+    .actions-row .count-badge {
+      margin-left: 0;
+      text-align: center;
+      width: 100%;
+    }
+
+    .filter-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .filter-row label {
+      margin-bottom: -0.35rem;
+    }
+
+    .filter-row select,
+    .filter-row input {
+      width: 100%;
+    }
+
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .section-title {
+      gap: 0.45rem;
+    }
+
+    .upload-area p,
+    #statusBar,
+    .no-data-msg {
+      font-size: 0.75rem;
+    }
+
+    .stat-pair {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .comp-table,
+    .comp-table table {
+      min-width: 640px;
+    }
+
+    .domain-card .d-score {
+      font-size: 2rem;
+    }
+
+    .index-hero .desc {
+      max-width: 100%;
+    }
+
+    .sev-picker button {
+      flex: 1 1 calc(20% - 0.5rem);
+      min-width: 44px;
+    }
+  }
+
+  @media (max-width: 420px) {
+    header h1 br {
+      display: none;
+    }
+
+    header p {
+      letter-spacing: 0.06em;
+      padding-right: 0;
+    }
+
+    .upload-area {
+      border-radius: 10px;
+    }
+
+    .section-title span {
+      width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Creative Industry Policy Quadrant<br>Analytical System</h1>
+  <p>Philippine Book Publishing Industry Analysis</p>
+</header>
+
+<section class="view-switch">
+  <div class="view-toggle-group">
+    <button class="btn btn-secondary" id="encoderViewBtn" type="button" onclick="setAppView('encoder')">Analyst View</button>
+    <button class="btn btn-secondary active" id="clientViewBtn" type="button" onclick="setAppView('client')">Client View</button>
+  </div>
+  <div class="view-switch-note">Analyst View keeps coding, validation, and dataset management together. Client View keeps CIPQ analytics central while adding lightweight Value Chain and PESTLE context for reporting.</div>
+</section>
+
+<nav id="mainNav">
+  <button data-tab="entry" data-view="encoder" onclick="switchTab('entry', this)">01 · Analyst Entry</button>
+  <button class="active" data-tab="dashboard" data-view="client" onclick="switchTab('dashboard', this)">01 · Client Dashboard</button>
+  <button data-tab="indicators" data-view="client" onclick="switchTab('indicators', this)">02 · Indicators</button>
+  <button data-tab="comparison" data-view="client" onclick="switchTab('comparison', this)">03 · Perspectives</button>
+  <button data-tab="priority" data-view="client" onclick="switchTab('priority', this)">04 · Policy Signals</button>
+  <button data-tab="dataset" data-view="encoder" onclick="switchTab('dataset', this)">02 · Encoded Dataset</button>
+</nav>
+
+<main>
+
+  <div id="statusBar"></div>
+
+  <section class="auth-shell">
+    <div class="auth-summary">
+      <div class="auth-kicker">Persistent Workspace</div>
+      <h2>Sign in to save and reload your encoded segment history</h2>
+      <div class="auth-meta">
+        <span class="auth-state-pill" id="authStatePill">Local Only</span>
+        <span class="auth-user-email" id="authUserEmail">Not signed in</span>
+      </div>
+      <div class="auth-note" id="authSyncNote">You can work locally without signing in. Cloud sync becomes available after the Supabase schema is updated to the richer CIPQ record structure.</div>
+    </div>
+    <div class="auth-form-card">
+      <div class="auth-form-grid">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="auth_email" placeholder="name@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="auth_password" placeholder="At least 6 characters" autocomplete="current-password">
+        </div>
+      </div>
+      <div class="auth-actions">
+        <button class="btn btn-primary" id="authLoginBtn" type="button" onclick="signInUser()">Log In</button>
+        <button class="btn btn-secondary" id="authSignupBtn" type="button" onclick="signUpUser()">Create Account</button>
+        <button class="btn btn-secondary" id="authLogoutBtn" type="button" onclick="signOutUser()">Log Out</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="tab-entry" class="tab-panel" data-view="encoder">
+    <div class="section-title">Analyst Workspace <span>Controlled coding with validation</span></div>
+
+    <div class="upload-area" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+      <span class="icon">CSV</span>
+      <h3>Import Existing Dataset</h3>
+      <p>Drop a CSV file here or click to browse. The importer accepts both the legacy flat format and the richer CIPQ schema fields.</p>
+      <div class="upload-meta">
+        <span id="uploadSuccessPill" class="upload-pill">Loaded</span>
+        <span id="uploadFilename" class="upload-filename">No file uploaded yet</span>
+      </div>
+      <input type="file" id="fileInput" accept=".csv" onchange="handleFileUpload(event)">
+    </div>
+
+    <div class="section-title" style="font-size:1.1rem; margin-top:0.5rem;">Manual Segment Entry</div>
+    <div class="form-note">This form uses the controlled CIPQ codebook. Primary quadrant is inferred from the selected theme code, and indicator choices are constrained to the selected theme.</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Segment ID</label>
+        <input type="text" id="f_segid" placeholder="e.g. SEG_0001">
+      </div>
+      <div class="form-group">
+        <label>Theme Code</label>
+        <select id="f_theme_code" onchange="updateThemeSelection()">
+          <option value="">-- Select Theme --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Theme Label</label>
+        <input class="readonly-input" type="text" id="f_theme_label" readonly placeholder="Auto-filled from codebook">
+      </div>
+      <div class="form-group">
+        <label>Primary Quadrant</label>
+        <input class="readonly-input" type="text" id="f_domain" readonly placeholder="Auto-filled from theme">
+      </div>
+      <div class="form-group">
+        <label>Indicator Code</label>
+        <select id="f_indicator" onchange="updateIndicatorMetadata()">
+          <option value="">-- Select Theme First --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Indicator Label</label>
+        <input class="readonly-input" type="text" id="f_indicator_label" readonly placeholder="Auto-filled from codebook">
+      </div>
+      <div class="form-group">
+        <label>Stakeholder Group</label>
+        <select id="f_stakeholder">
+          <option value="">-- Select --</option>
+          <option>Author</option>
+          <option>Publisher</option>
+          <option>Printer</option>
+          <option>Distributor</option>
+          <option>Bookseller</option>
+          <option>Librarian</option>
+          <option>Reader</option>
+          <option>Government</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Respondent Type</label>
+        <input type="text" id="f_respondent_type" placeholder="e.g. Independent publisher">
+      </div>
+      <div class="form-group">
+        <label>Region</label>
+        <select id="f_region">
+          <option value="">-- Select --</option>
+          <option>NCR</option>
+          <option>CAR</option>
+          <option>Region I</option>
+          <option>Region II</option>
+          <option>Region III</option>
+          <option>Region IV-A</option>
+          <option>Region IV-B</option>
+          <option>Region V</option>
+          <option>Region VI</option>
+          <option>Region VII</option>
+          <option>Region VIII</option>
+          <option>Region IX</option>
+          <option>Region X</option>
+          <option>Region XI</option>
+          <option>Region XII</option>
+          <option>Region XIII</option>
+          <option>BARMM</option>
+          <option>Luzon</option>
+          <option>Visayas</option>
+          <option>Mindanao</option>
+          <option>Unknown</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Secondary Quadrant</label>
+        <select id="f_domain_secondary">
+          <option value="">-- None --</option>
+          <option value="Creation">Creation</option>
+          <option value="Production">Production</option>
+          <option value="Distribution">Distribution</option>
+          <option value="Access">Access</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Value Chain Stage</label>
+        <select id="f_value_chain_stage">
+          <option value="">-- Select --</option>
+          <option>Development</option>
+          <option>Production</option>
+          <option>Distribution</option>
+          <option>Market Access</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>PESTLE Tags</label>
+        <details id="f_pestle_tags" class="multi-select-dropdown">
+          <summary id="f_pestle_summary">-- Select --</summary>
+          <div class="multi-select-options">
+            <label><input type="checkbox" value="Political" onchange="updatePestleSummary()"> Political</label>
+            <label><input type="checkbox" value="Economic" onchange="updatePestleSummary()"> Economic</label>
+            <label><input type="checkbox" value="Social" onchange="updatePestleSummary()"> Social</label>
+            <label><input type="checkbox" value="Technological" onchange="updatePestleSummary()"> Technological</label>
+            <label><input type="checkbox" value="Legal" onchange="updatePestleSummary()"> Legal</label>
+            <label><input type="checkbox" value="Environmental" onchange="updatePestleSummary()"> Environmental</label>
+          </div>
+        </details>
+      </div>
+      <div class="form-group">
+        <label>Source Type</label>
+        <select id="f_source_type">
+          <option value="">-- Select --</option>
+          <option>FGD</option>
+          <option>KII</option>
+          <option>Survey</option>
+          <option>Document</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Source ID</label>
+        <input type="text" id="f_source_id" placeholder="e.g. FGD_03">
+      </div>
+      <div class="form-group">
+        <label>Session ID</label>
+        <input type="text" id="f_session" placeholder="e.g. KII_NCR_01">
+      </div>
+      <div class="form-group">
+        <label>Scoring Confidence</label>
+        <select id="f_confidence">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Narrative Snippet</label>
+        <textarea id="f_snippet" placeholder="Paste the quoted or paraphrased excerpt here."></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Analysis Notes</label>
+        <textarea id="f_analysis_notes" placeholder="Optional notes for coders, cross-quadrant links, or interpretation context."></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Severity Score</label>
+        <div class="sev-picker" id="sevPicker">
+          <button type="button" onclick="setSeverity(1)" title="1 - Minimal">1</button>
+          <button type="button" onclick="setSeverity(2)" title="2 - Low">2</button>
+          <button type="button" onclick="setSeverity(3)" title="3 - Moderate">3</button>
+          <button type="button" onclick="setSeverity(4)" title="4 - High">4</button>
+          <button type="button" onclick="setSeverity(5)" title="5 - Critical">5</button>
+        </div>
+        <div class="severity-scale-note">1 - Minimal | 2 - Low | 3 - Moderate | 4 - High | 5 - Critical</div>
+        <input type="hidden" id="f_severity" value="">
+      </div>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn btn-primary" type="button" onclick="addSegment()">Add Segment</button>
+      <button class="btn btn-secondary" type="button" onclick="clearForm()">Clear Form</button>
+      <button class="btn btn-secondary" type="button" onclick="exportCSV()">Export CSV</button>
+      <button class="btn btn-secondary" type="button" onclick="exportInterpretiveJson()">Export JSON</button>
+      <span class="count-badge" id="segCount">0 segments loaded</span>
+    </div>
+
+    <div class="entry-table-wrap" id="entryPreview"></div>
+  </div>
+
+  <div id="tab-dashboard" class="tab-panel active" data-view="client">
+    <div class="dashboard-actions">
+      <button class="btn btn-secondary" type="button" onclick="exportInterpretiveJson()">Export Dashboard JSON</button>
+      <button class="btn btn-secondary" type="button" onclick="downloadClientReport()">Download Client Report</button>
+    </div>
+    <div id="dashContent">
+      <div class="no-data-msg">No data yet. Encode or import segments in Analyst View to generate client-facing insights.</div>
+    </div>
+  </div>
+
+  <div id="tab-indicators" class="tab-panel" data-view="client">
+    <div class="section-title">Indicator Analysis <span>Frequency, severity, spread, and confidence</span></div>
+    <div class="filter-row">
+      <label>Quadrant:</label>
+      <select id="indFilterDomain" onchange="renderIndicators()">
+        <option value="">All Quadrants</option>
+        <option>Creation</option>
+        <option>Production</option>
+        <option>Distribution</option>
+        <option>Access</option>
+      </select>
+      <label>Value Chain:</label>
+      <select id="indFilterValueChain" onchange="renderIndicators()">
+        <option value="">All Stages</option>
+        <option>Development</option>
+        <option>Production</option>
+        <option>Distribution</option>
+        <option>Market Access</option>
+      </select>
+      <label>PESTLE:</label>
+      <select id="indFilterPestle" onchange="renderIndicators()">
+        <option value="">All Tags</option>
+        <option>Political</option>
+        <option>Economic</option>
+        <option>Social</option>
+        <option>Technological</option>
+        <option>Legal</option>
+        <option>Environmental</option>
+      </select>
+    </div>
+    <div id="indicatorContent">
+      <div class="no-data-msg">No data yet. Encode or import segments in Analyst View.</div>
+    </div>
+    <div id="indicatorTraceability"></div>
+  </div>
+
+  <div id="tab-comparison" class="tab-panel" data-view="client">
+    <div class="section-title">Stakeholder Perspectives <span>Stakeholder and regional comparison</span></div>
+    <div id="compContent">
+      <div class="no-data-msg">No data yet. Encode or import segments in Analyst View.</div>
+    </div>
+  </div>
+
+  <div id="tab-priority" class="tab-panel" data-view="client">
+    <div class="section-title">Priority Policy Signals <span>Classified signals with narratives and evidence</span></div>
+    <div class="filter-row">
+      <label>Min Severity:</label>
+      <select id="minSev" onchange="renderPriority()">
+        <option value="3.5">>= 3.5</option>
+        <option value="4.0" selected>>= 4.0</option>
+        <option value="4.5">>= 4.5</option>
+      </select>
+      <label>Min Frequency:</label>
+      <select id="minCount" onchange="renderPriority()">
+        <option value="1">>= 1</option>
+        <option value="2">>= 2</option>
+        <option value="3" selected>>= 3</option>
+        <option value="5">>= 5</option>
+      </select>
+    </div>
+    <div id="priorityContent">
+      <div class="no-data-msg">No data yet. Encode or import segments in Analyst View.</div>
+    </div>
+  </div>
+
+  <div id="tab-dataset" class="tab-panel" data-view="encoder">
+    <div class="section-title">Encoded Dataset <span>Validation-ready record view</span></div>
+    <div class="actions-row">
+      <button class="btn btn-secondary" type="button" onclick="exportCSV()">Export CSV</button>
+      <button class="btn btn-secondary" type="button" onclick="exportInterpretiveJson()">Export JSON</button>
+      <button class="btn btn-secondary" type="button" onclick="if(confirm('Delete all segments?')) { clearAllSegments(); }">Clear All</button>
+      <span class="count-badge" id="datasetCount">0 segments</span>
+    </div>
+    <div class="filter-row">
+      <label>Filter Quadrant:</label>
+      <select id="dsFilterDomain" onchange="renderDataset()">
+        <option value="">All</option>
+        <option>Creation</option>
+        <option>Production</option>
+        <option>Distribution</option>
+        <option>Access</option>
+      </select>
+      <label>Stakeholder:</label>
+      <select id="dsFilterStakeholder" onchange="renderDataset()">
+        <option value="">All</option>
+      </select>
+      <label>Value Chain:</label>
+      <select id="dsFilterValueChain" onchange="renderDataset()">
+        <option value="">All</option>
+        <option>Development</option>
+        <option>Production</option>
+        <option>Distribution</option>
+        <option>Market Access</option>
+      </select>
+      <label>PESTLE:</label>
+      <select id="dsFilterPestle" onchange="renderDataset()">
+        <option value="">All</option>
+        <option>Political</option>
+        <option>Economic</option>
+        <option>Social</option>
+        <option>Technological</option>
+        <option>Legal</option>
+        <option>Environmental</option>
+      </select>
+    </div>
+    <div id="datasetContent">
+      <div class="no-data-msg">No data yet.</div>
+    </div>
+  </div>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
